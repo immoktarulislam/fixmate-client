@@ -25,9 +25,37 @@ const githubEnabled = Boolean(
 /** Roles a user may assign to themselves at sign-up. `admin` is excluded. */
 const SELF_ASSIGNABLE_ROLES = ["customer", "technician"];
 
+/**
+ * Public origin of this app, used for cookies/redirects:
+ *  1. `BETTER_AUTH_URL` when it points at a real deployed URL
+ *  2. the platform-provided URL on Vercel (VERCEL_PROJECT_PRODUCTION_URL /
+ *     VERCEL_URL) - this also neutralises a `http://localhost:3000` value that
+ *     was copied into the project env vars by mistake
+ *  3. localhost for local development
+ */
+const isLocalhostUrl = (url) =>
+  !url || /^https?:\/\/(localhost|127\.0\.0\.1)([/:]|$)/i.test(url);
+const vercelHost =
+  process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || "";
+const configuredUrl = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+const baseURL =
+  configuredUrl && !isLocalhostUrl(configuredUrl)
+    ? configuredUrl
+    : vercelHost
+    ? (vercelHost.startsWith("http") ? vercelHost : `https://${vercelHost}`)
+    : configuredUrl || "http://localhost:3000";
+
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
+  trustedOrigins: [
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "https://*.vercel.app",
+    "*.vercel.app",
+    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+    ...(process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : []),
+  ].filter(Boolean),
 
   database: mongodbAdapter(db, { client }),
 
