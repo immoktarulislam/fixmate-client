@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { clearToken } from "@/lib/api";
@@ -18,24 +18,44 @@ function homeFor(role) {
  *  - wrong role area -> that role's own dashboard (403 semantics live on the
  *                       API; this is just friendly UX)
  * `roles` = array of allowed roles (omit to allow any signed-in user).
+ *
+ * The shared session cache can still hold the pre-sign-in value for a beat, so
+ * when no user is found we ask the server once before redirecting - otherwise
+ * a fresh sign-in could bounce straight back to the sign-in page.
  */
 export default function AuthGuard({ roles, children }) {
-  const { data, isPending } = useSession();
+  const { data, isPending, refetch } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const user = data?.user;
+  // Pathname whose session has already been re-checked with the server.
+  const [rechecked, setRechecked] = useState(null);
 
   useEffect(() => {
     if (isPending) return;
-    if (!user) {
+
+    // Wrong role for this area -> that role's own dashboard.
+    if (user && roles && !roles.includes(user.role || "customer")) {
+      router.replace(homeFor(user.role));
+      return;
+    }
+    if (user) return;
+
+    if (rechecked === pathname) {
       clearToken();
       router.replace(`/sign-in?callback=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (roles && !roles.includes(user.role || "customer")) {
-      router.replace(homeFor(user.role));
-    }
-  }, [isPending, user, roles, router, pathname]);
+
+    let alive = true;
+    (async () => {
+      await refetch();
+      if (alive) setRechecked(pathname);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isPending, user, roles, router, pathname, rechecked, refetch]);
 
   if (isPending || !user || (roles && !roles.includes(user.role || "customer"))) {
     return (
