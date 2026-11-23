@@ -29,7 +29,7 @@ The Express API must also be running on `http://localhost:5000`
 | Admin      | admin@fixmate.dev  | Fixmate@123 |
 | Technician | rahim@fixmate.dev  | Fixmate@123 |
 | Technician | karim@fixmate.dev  | Fixmate@123 |
-| Customer   | sumaiya@fixmate.dev| Fixmate@123 |
+| Customer   | asmina9@gmail.com  | Asmina1234  |
 | Customer   | tanvir@fixmate.dev | Fixmate@123 |
 
 `npm run seed` is idempotent — it wipes previously seeded demo data and
